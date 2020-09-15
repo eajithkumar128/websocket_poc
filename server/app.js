@@ -5,7 +5,9 @@ var io = require('socket.io').listen(server);
 
 var connectionIds = [];
 
-var connectedPages = {}
+var connectedPages = {};
+
+var currentUser = ""
 
 io.on('connection', socket => {
     connectionIds.push(socket);
@@ -15,13 +17,13 @@ io.on('connection', socket => {
 
     //Listen to message
     socket.on('checkSend', data => {
-        console.log(data);
         // socket.emit('receiveMessage', "Fine How about you");
         socket.broadcast.emit('broadcast', 'hello friends!');
     });
 
     //check connection available
     socket.on("checkConnectionAvailable", data => {
+        currentUser = data.username
         if (!connectedPages.hasOwnProperty(data.pageId)) {
             connectedPages[data.pageId] = {
                 status: "connected",
@@ -66,12 +68,18 @@ io.on('connection', socket => {
         let prevConnectionId = connectedPages[page.pageId].socketId;
         connectedPages[page.pageId].socketId = socket.id;
         socket.broadcast.to(prevConnectionId).emit('closeCurrentPage');
+    });
+
+    socket.on('disconnect', () => {
+        Object.keys(connectedPages).forEach(function (key) {
+            if (connectedPages[key].connectedBy === currentUser) {
+                delete connectedPages[key]
+            }
+        });
+        console.log("connection closed");
     })
 });
 
-io.on('close', () => {
-    console.log("connection closed");
-})
 
 
 
